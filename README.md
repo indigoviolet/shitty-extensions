@@ -1,18 +1,8 @@
 # shitty-extensions
 
-> Custom hooks for [pi coding agent](https://github.com/badlogic/pi-mono).
+Custom hooks for [pi coding agent](https://github.com/badlogic/pi-mono).
 
-## Contents
-
-- [Hooks](#hooks)
-  - [memory-mode](#memory-modets) - Save instructions to AGENTS.md files
-  - [usage-bar](#usage-barts) - Show AI provider usage stats (Claude, Copilot, Gemini)
-- [Installation](#installation)
-- [License](#license)
-
----
-
-## Hooks
+## Available Hooks
 
 ### memory-mode.ts
 
@@ -34,46 +24,40 @@ Save instructions to AGENTS.md files with AI-assisted integration.
 ```
 /mem Never use git commands directly
 /mem Always use TypeScript strict mode
-/mem Prefer async/await over callbacks
 ```
 
-### usage-bar.ts
+---
 
-Shows AI provider usage statistics like [CodexBar](https://github.com/steipete/CodexBar), but as a pi hook.
+### plan-mode.ts
+
+Claude Code-style "plan mode" for safe code exploration.
 
 **Commands:**
-- `/usage` - Show usage statistics for all configured providers
+- `/plan` - Toggle plan mode on/off
+- `/todos` - Show current plan todo list
 
-**Supported Providers:**
-- **Claude/Anthropic** - 5h window, weekly limit, model-specific (Sonnet/Opus)
-- **GitHub Copilot** - Premium interactions, chat quota
-- **Google Gemini** - Pro/Flash model quotas
+**Shortcut:**
+- `Shift+P` - Toggle plan mode
 
-**Credential Sources:**
-- Claude: `~/.pi/agent/auth.json` (pi login) or Claude CLI keychain
-- Copilot: `~/.pi/agent/auth.json` or `gh auth token`
-- Gemini: `~/.gemini/oauth_creds.json`
+**Features:**
+- In plan mode: only read-only tools (read, bash read-only, grep, find, ls)
+- Agent cannot modify files while planning
+- Injects system context telling the agent about restrictions
+- After each response, prompts to execute the plan or continue planning
+- Shows "plan" indicator in footer when active
+- Extracts todo list from plan and tracks progress during execution
+- Uses ID-based tracking: agent outputs `[DONE:id]` to mark steps complete
 
-**Example Output:**
+**Example:**
 ```
-╭─────────────────────────────────────────────────────╮
-│ AI Usage                                            │
-├─────────────────────────────────────────────────────┤
-│ Claude                                              │
-│   5h      █░░░░░░░░░░░  96% (43m)                  │
-│   Week    ██░░░░░░░░░░  81% (Jan 8)                │
-│   Sonnet  ░░░░░░░░░░░░  99%                        │
-│                                                     │
-│ Copilot                                             │
-│   HTTP 404                                          │
-│                                                     │
-│ Gemini                                              │
-│   HTTP 401                                          │
-│                                                     │
-├─────────────────────────────────────────────────────┤
-│ Press any key to close                              │
-╰─────────────────────────────────────────────────────╯
+/plan
+> Analyze the codebase and create a plan to refactor the authentication module
+
+# Agent explores code in read-only mode, creates a plan
+# Then prompts: "Execute plan?" or "Continue planning?"
 ```
+
+---
 
 ## Installation
 
@@ -82,16 +66,22 @@ Shows AI provider usage statistics like [CodexBar](https://github.com/steipete/C
 ```bash
 # Global hooks (all projects)
 cp memory-mode.ts ~/.pi/agent/hooks/
+cp plan-mode.ts ~/.pi/agent/hooks/
 
 # Project-local hooks
+mkdir -p .pi/hooks
 cp memory-mode.ts .pi/hooks/
+cp plan-mode.ts .pi/hooks/
 ```
 
 ### Option 2: Add to settings.json
 
 ```json
 {
-  "hooks": ["/path/to/shitty-extensions/memory-mode.ts"]
+  "hooks": [
+    "/path/to/shitty-extensions/memory-mode.ts",
+    "/path/to/shitty-extensions/plan-mode.ts"
+  ]
 }
 ```
 
@@ -99,6 +89,7 @@ cp memory-mode.ts .pi/hooks/
 
 ```bash
 pi --hook /path/to/shitty-extensions/memory-mode.ts
+pi --hook /path/to/shitty-extensions/plan-mode.ts
 ```
 
 ## License
