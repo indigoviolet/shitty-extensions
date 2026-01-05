@@ -1,5 +1,5 @@
 /**
- * Memory Mode Hook
+ * Memory Mode Extension
  *
  * Save instructions to AGENTS.md files with AI-assisted integration.
  *
@@ -11,7 +11,7 @@
  * - AGENTS.local.md auto-added to .gitignore
  *
  * Usage:
- * 1. Copy this file to ~/.pi/agent/hooks/ or your project's .pi/hooks/
+ * 1. Copy this file to ~/.pi/agent/extensions/ or your project's .pi/extensions/
  * 2. Type /mem and enter your instruction
  *
  * Example:
@@ -21,9 +21,8 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { completeSimple } from "@mariozechner/pi-ai";
-import type { HookAPI, HookContext } from "@mariozechner/pi-coding-agent/hooks";
+import type { ExtensionAPI, ExtensionContext, Theme } from "@mariozechner/pi-coding-agent";
 import { type TUI, matchesKey, Key, truncateToWidth, wrapTextWithAnsi } from "@mariozechner/pi-tui";
-import type { Theme } from "@mariozechner/pi-coding-agent";
 
 // Spinner frames for loading animation
 const SPINNER_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
@@ -212,7 +211,7 @@ interface SaveLocation {
 	filePath: string;
 }
 
-export default function (pi: HookAPI) {
+export default function (pi: ExtensionAPI) {
 	// Register /mem command
 	pi.registerCommand("mem", {
 		description: "Save an instruction to AGENTS.md (AI-assisted)",
@@ -244,7 +243,7 @@ export default function (pi: HookAPI) {
 	});
 }
 
-async function handleMemoryInstruction(pi: HookAPI, ctx: HookContext, instruction: string): Promise<void> {
+async function handleMemoryInstruction(pi: ExtensionAPI, ctx: ExtensionContext, instruction: string): Promise<void> {
 	const cwd = ctx.cwd;
 	const agentDir = getAgentDir();
 
