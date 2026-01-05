@@ -292,8 +292,8 @@ export default function planModeHook(pi: HookAPI) {
 		},
 	});
 
-	// Register Shift+P shortcut
-	pi.registerShortcut(Key.shift("p"), {
+	// Register Ctrl+Shift+P shortcut (not just Shift+P to avoid blocking uppercase P)
+	pi.registerShortcut(Key.ctrlShift("p"), {
 		description: "Toggle plan mode",
 		handler: async (ctx) => {
 			togglePlanMode(ctx);
