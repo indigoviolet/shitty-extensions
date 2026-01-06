@@ -6,7 +6,7 @@
  */
 
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
-import { Theme, Box, visibleWidth } from "@mariozechner/pi-tui";
+import { Theme, visibleWidth } from "@mariozechner/pi-tui";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import * as os from "node:os";
@@ -230,9 +230,8 @@ class CreditsHistoryComponent {
 
 	invalidate(): void {}
 
-	render(box: Box): string[] {
+	render(width: number): string[] {
 		const t = this.theme;
-		const width = box.width;
 		const lines: string[] = [];
 
 		const accent = (s: string) => t.fg("accent", s);
@@ -291,19 +290,8 @@ export default function (pi: ExtensionAPI) {
 
 			const days = args[0] ? parseInt(args[0], 10) : 30;
 			
-			ctx.ui.showWidget({
-				position: "center",
-				width: 70,
-				height: 30,
-				render: (tui, theme, box, close) => {
-					const component = new CreditsHistoryComponent(tui, theme, close, days);
-					return {
-						render: () => component.render(box),
-						handleInput: (data) => component.handleInput(data),
-						invalidate: () => component.invalidate(),
-						dispose: () => component.dispose(),
-					};
-				},
+			await ctx.ui.custom((tui, theme, done) => {
+				return new CreditsHistoryComponent(tui, theme, () => done(undefined), days);
 			});
 		},
 	});
