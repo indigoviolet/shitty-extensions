@@ -9,6 +9,9 @@ Custom hooks for [pi coding agent](https://github.com/badlogic/pi-mono).
   - [plan-mode.ts](#plan-modets) - Read-only exploration mode
   - [handoff.ts](#handoffts) - Transfer context to new sessions
   - [usage-bar.ts](#usage-barts) - AI provider usage statistics
+  - [ultrathink.ts](#ultrathinkts) - Rainbow animated "ultrathink" effect
+  - [status-widget.ts](#status-widgetts) - Provider status in footer
+  - [cost-tracker.ts](#cost-trackerts) - Session spending analysis
 - [Installation](#installation)
 - [License](#license)
 
@@ -37,20 +40,8 @@ Save instructions to AGENTS.md files with AI-assisted integration.
   | Project | `./AGENTS.md` | Shared with team |
   | Global | `~/.pi/agent/AGENTS.md` | All your projects |
 
-- **AI-assisted integration**: The current model intelligently integrates instructions:
-  - Groups related instructions under appropriate headings
-  - Avoids duplicating rules (updates existing ones instead)
-  - Maintains consistent formatting with existing content
-
+- **AI-assisted integration**: The current model intelligently integrates instructions
 - **Preview before save**: Review proposed changes before committing
-
-#### Example
-
-```
-/mem Never use git commands directly
-/mem Always use TypeScript strict mode
-/mem Prefer async/await over callbacks
-```
 
 ---
 
@@ -77,44 +68,11 @@ Claude Code-style "plan mode" for safe code exploration.
 |------|-------------|
 | `--plan` | Start session in plan mode |
 
-#### Features
-
-- **Read-only mode**: In plan mode, only these tools are available:
-  - `read` - Read file contents
-  - `bash` (read-only commands only)
-  - `grep` - Search file contents
-  - `find` - Find files
-  - `ls` - List directories
-
-- **Destructive command blocking**: Blocks commands like `rm`, `mv`, `git commit`, `npm install`, etc.
-
-- **Plan execution flow**:
-  1. Enable plan mode with `/plan`
-  2. Agent explores code in read-only mode
-  3. Agent creates a plan with numbered steps
-  4. After each response, prompts: "Execute plan?" or "Continue planning?"
-  5. When executing, tracks progress with visual checkboxes
-
-- **Todo tracking**: View progress with `/todos` or watch the sidebar widget
-
-- **Visual indicator**: Shows "⏸ plan" in footer when active, "📋 X/Y" during execution
-
-#### Example
-
-```
-/plan
-> Analyze the codebase and create a plan to refactor the authentication module
-
-# Agent explores in read-only mode, creates numbered plan
-# Prompts to execute or continue planning
-# During execution, shows progress: ☑ Step 1, ☐ Step 2, etc.
-```
-
 ---
 
 ### handoff.ts
 
-Transfer context to a new focused session. Instead of compacting (which is lossy), handoff extracts what matters for your next task and creates a new session with a generated prompt.
+Transfer context to a new focused session.
 
 #### Commands
 
@@ -122,38 +80,11 @@ Transfer context to a new focused session. Instead of compacting (which is lossy
 |---------|-------------|
 | `/handoff <goal>` | Generate a context-aware prompt for a new session |
 
-#### Features
-
-- **AI-generated context transfer**: Automatically summarizes:
-  - Key decisions made in the conversation
-  - Approaches taken and findings discovered
-  - Relevant files that were discussed or modified
-  - Clear next steps based on your goal
-
-- **Editable draft**: The generated prompt appears in the editor for review and editing before submitting
-
-- **Session linking**: New sessions track their parent session for reference
-
-#### Use Cases
-
-- Long conversations approaching context limits
-- Switching focus to a related but distinct task
-- Breaking large tasks into focused sub-sessions
-- Handing off partial work to continue later
-
-#### Example
-
-```
-/handoff now implement this for teams as well
-/handoff execute phase one of the plan
-/handoff check other places that need this fix
-```
-
 ---
 
 ### usage-bar.ts
 
-Display AI provider usage statistics for Claude, GitHub Copilot, and Google Gemini.
+Display AI provider usage statistics with status polling and reset countdowns.
 
 #### Commands
 
@@ -163,26 +94,26 @@ Display AI provider usage statistics for Claude, GitHub Copilot, and Google Gemi
 
 #### Supported Providers
 
-| Provider | Metrics Shown |
-|----------|---------------|
-| **Claude** | 5-hour window, 7-day window, model-specific (Sonnet/Opus) |
-| **Copilot** | Premium interactions, Chat usage |
-| **Gemini** | Pro quota, Flash quota |
+| Provider | Metrics Shown | Auth Source |
+|----------|---------------|-------------|
+| **Claude** | 5h window, Week, Sonnet/Opus | pi auth, macOS Keychain |
+| **Copilot** | Premium, Chat | pi auth, `gh auth token` |
+| **Gemini** | Pro quota, Flash quota | pi auth (`google-gemini-cli`) |
+| **Codex** | 5h window, Day, Credits | pi auth (`openai-codex`) |
+| **Kiro** | Credits, Bonus credits | `kiro-cli` |
+| **z.ai** | Token limits, Monthly | `Z_AI_API_KEY` env or pi auth |
 
 #### Features
 
-- **Multi-provider support**: See all your AI usage in one view
+- **Provider status polling**: Shows outage/incident status
+  - ✅ All systems operational
+  - ⚠️ Minor incident
+  - 🟠 Major incident  
+  - 🔴 Critical outage
+  - 🔧 Maintenance
+- **Reset countdowns**: Shows when limits reset (e.g., "2h 30m", "3d 5h")
 - **Visual progress bars**: Color-coded remaining quota (green → yellow → red)
-- **Reset timers**: Shows when rate limits will reset
-- **Auto-detection**: Finds credentials from pi auth, Claude CLI keychain, gh CLI, and Gemini config
-
-#### Credential Sources
-
-| Provider | Locations Checked |
-|----------|-------------------|
-| Claude | `~/.pi/agent/auth.json`, macOS Keychain (Claude Code) |
-| Copilot | `~/.pi/agent/auth.json`, `gh auth token` |
-| Gemini | `~/.gemini/oauth_creds.json` |
+- **Auto-filters**: Only shows providers you have credentials for
 
 #### Example Output
 
@@ -190,17 +121,101 @@ Display AI provider usage statistics for Claude, GitHub Copilot, and Google Gemi
 ╭─────────────────────────────────────────────╮
 │ AI Usage                                    │
 ├─────────────────────────────────────────────┤
-│ Claude                                      │
-│   5h      ████████░░░░  33%  (2h)          │
+│ Claude ✅                                   │
+│   5h      ████████░░░░  33%  ⏱2h 30m       │
 │   Week    ██░░░░░░░░░░  85%                │
 │                                             │
-│ Copilot (pro)                               │
-│   Premium ████░░░░░░░░  67%                │
-│   Chat    ░░░░░░░░░░░░ 100%                │
+│ Codex (Plus $45.50) ⚠️                      │
+│   ⚡ Partial System Degradation             │
+│   5h      ████░░░░░░░░  67%  ⏱1h 45m       │
+│   Day     ██████░░░░░░  50%                │
+├─────────────────────────────────────────────┤
+│ Press any key to close                      │
+╰─────────────────────────────────────────────╯
+```
+
+---
+
+### ultrathink.ts
+
+Rainbow animated "ultrathink" text effect with Knight Rider shimmer.
+
+#### Commands
+
+| Command | Description |
+|---------|-------------|
+| `/ultrathink` | Trigger the rainbow animation |
+
+#### Keyboard Shortcuts
+
+| Shortcut | Action |
+|----------|--------|
+| `Ctrl+U` | Trigger ultrathink |
+
+#### Features
+
+- **Auto-detect**: Triggers when you type "ultrathink" in your message
+- **Rainbow colors**: Cycles through red, orange, yellow, green, cyan, blue, magenta
+- **Knight Rider effect**: White shimmer sweeps across the text
+- **3-second animation**: Shows above the editor, then fades away
+
+---
+
+### status-widget.ts
+
+Persistent provider status indicator in the footer.
+
+#### Commands
+
+| Command | Description |
+|---------|-------------|
+| `/status` | Toggle status widget on/off |
+| `/status-refresh` | Force refresh status now |
+
+#### Features
+
+- **Auto-start**: Enables automatically on session start
+- **Auto-refresh**: Updates every 5 minutes
+- **Providers monitored**: Claude, OpenAI, Gemini, GitHub
+
+#### Footer Display
+
+```
+✅ Claude  ✅ OpenAI  ⚠️ Gemini  ✅ GitHub
+```
+
+---
+
+### cost-tracker.ts
+
+Analyze spending from pi session logs.
+
+#### Commands
+
+| Command | Description |
+|---------|-------------|
+| `/cost` | Show spending for last 30 days |
+| `/cost <days>` | Show spending for last N days |
+
+#### Features
+
+- **Provider breakdown**: Shows spending by provider
+- **Model breakdown**: Expandable view with per-model costs
+- **Daily totals**: Token and cost summaries
+
+#### Example Output
+
+```
+╭─────────────────────────────────────────────╮
+│ 💰 Cost Tracker (Last 30 days)              │
+├─────────────────────────────────────────────┤
+│ Total: $24.56 (1,234,567 tokens)            │
 │                                             │
-│ Gemini                                      │
-│   Pro     ██████░░░░░░  50%                │
-│   Flash   ░░░░░░░░░░░░ 100%                │
+│ By Provider:                                │
+│   1. anthropic    $18.23  (74%)             │
+│   2. openai       $6.33   (26%)             │
+│                                             │
+│ Press 1-2 to expand model breakdown         │
 ├─────────────────────────────────────────────┤
 │ Press any key to close                      │
 ╰─────────────────────────────────────────────╯
@@ -231,18 +246,20 @@ Add to `~/.pi/agent/settings.json`:
     "/path/to/shitty-extensions/memory-mode.ts",
     "/path/to/shitty-extensions/plan-mode.ts",
     "/path/to/shitty-extensions/handoff.ts",
-    "/path/to/shitty-extensions/usage-bar.ts"
+    "/path/to/shitty-extensions/usage-bar.ts",
+    "/path/to/shitty-extensions/ultrathink.ts",
+    "/path/to/shitty-extensions/status-widget.ts",
+    "/path/to/shitty-extensions/cost-tracker.ts"
   ]
 }
 ```
 
-### Option 3: Use --hook flag
+### Option 3: Use -e flag
 
 ```bash
-pi --hook /path/to/shitty-extensions/memory-mode.ts \
-   --hook /path/to/shitty-extensions/plan-mode.ts \
-   --hook /path/to/shitty-extensions/handoff.ts \
-   --hook /path/to/shitty-extensions/usage-bar.ts
+pi -e /path/to/shitty-extensions/usage-bar.ts \
+   -e /path/to/shitty-extensions/ultrathink.ts \
+   -e /path/to/shitty-extensions/status-widget.ts
 ```
 
 ---
