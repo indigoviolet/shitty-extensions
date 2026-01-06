@@ -473,6 +473,192 @@ async function fetchCodexUsage(modelRegistry: any): Promise<UsageSnapshot> {
 }
 
 // ============================================================================
+// Kiro (AWS)
+// ============================================================================
+
+function stripAnsi(text: string): string {
+	return text.replace(/\x1B\[[0-9;?]*[A-Za-z]|\x1B\].*?\x07/g, "");
+}
+
+function whichSync(cmd: string): string | null {
+	try {
+		return execSync(`which ${cmd}`, { encoding: "utf-8" }).trim();
+	} catch {
+		return null;
+	}
+}
+
+async function fetchKiroUsage(): Promise<UsageSnapshot> {
+	const kiroBinary = whichSync("kiro-cli");
+	if (!kiroBinary) {
+		return { provider: "kiro", displayName: "Kiro", windows: [], error: "kiro-cli not found" };
+	}
+
+	try {
+		// Check if logged in
+		try {
+			execSync("kiro-cli whoami", { encoding: "utf-8", timeout: 5000 });
+		} catch {
+			return { provider: "kiro", displayName: "Kiro", windows: [], error: "Not logged in" };
+		}
+
+		// Get usage
+		const output = execSync("kiro-cli chat --no-interactive /usage", { 
+			encoding: "utf-8", 
+			timeout: 10000,
+			env: { ...process.env, TERM: "xterm-256color" }
+		});
+
+		const stripped = stripAnsi(output);
+		const windows: RateWindow[] = [];
+
+		// Parse plan name from "| KIRO FREE" or similar
+		let planName = "Kiro";
+		const planMatch = stripped.match(/\|\s*(KIRO\s+\w+)/i);
+		if (planMatch) {
+			planName = planMatch[1].trim();
+		}
+
+		// Parse credits percentage from "████...█ X%"
+		let creditsPercent = 0;
+		const percentMatch = stripped.match(/█+\s*(\d+)%/);
+		if (percentMatch) {
+			creditsPercent = parseInt(percentMatch[1], 10);
+		}
+
+		// Parse credits used/total from "(X.XX of Y covered in plan)"
+		let creditsUsed = 0;
+		let creditsTotal = 50;
+		const creditsMatch = stripped.match(/\((\d+\.?\d*)\s+of\s+(\d+)\s+covered/);
+		if (creditsMatch) {
+			creditsUsed = parseFloat(creditsMatch[1]);
+			creditsTotal = parseFloat(creditsMatch[2]);
+			if (!percentMatch && creditsTotal > 0) {
+				creditsPercent = (creditsUsed / creditsTotal) * 100;
+			}
+		}
+
+		// Parse reset date from "resets on 01/01"
+		let resetsAt: Date | undefined;
+		const resetMatch = stripped.match(/resets on (\d{2}\/\d{2})/);
+		if (resetMatch) {
+			const [month, day] = resetMatch[1].split("/").map(Number);
+			const now = new Date();
+			const year = now.getFullYear();
+			resetsAt = new Date(year, month - 1, day);
+			if (resetsAt < now) resetsAt.setFullYear(year + 1);
+		}
+
+		windows.push({
+			label: "Credits",
+			usedPercent: creditsPercent,
+			resetDescription: resetsAt ? formatReset(resetsAt) : undefined,
+		});
+
+		// Parse bonus credits
+		const bonusMatch = stripped.match(/Bonus credits:\s*(\d+\.?\d*)\/(\d+)/);
+		if (bonusMatch) {
+			const bonusUsed = parseFloat(bonusMatch[1]);
+			const bonusTotal = parseFloat(bonusMatch[2]);
+			const bonusPercent = bonusTotal > 0 ? (bonusUsed / bonusTotal) * 100 : 0;
+			const expiryMatch = stripped.match(/expires in (\d+) days?/);
+			windows.push({
+				label: "Bonus",
+				usedPercent: bonusPercent,
+				resetDescription: expiryMatch ? `${expiryMatch[1]}d left` : undefined,
+			});
+		}
+
+		return { provider: "kiro", displayName: "Kiro", windows, plan: planName };
+	} catch (e) {
+		return { provider: "kiro", displayName: "Kiro", windows: [], error: String(e) };
+	}
+}
+
+// ============================================================================
+// z.ai
+// ============================================================================
+
+async function fetchZaiUsage(): Promise<UsageSnapshot> {
+	// Check for API key in environment or pi auth
+	let apiKey = process.env.Z_AI_API_KEY;
+	
+	if (!apiKey) {
+		// Try pi auth storage
+		try {
+			const authPath = path.join(os.homedir(), ".pi", "agent", "auth.json");
+			if (fs.existsSync(authPath)) {
+				const auth = JSON.parse(fs.readFileSync(authPath, "utf-8"));
+				apiKey = auth["z-ai"]?.access || auth["zai"]?.access;
+			}
+		} catch {}
+	}
+
+	if (!apiKey) {
+		return { provider: "zai", displayName: "z.ai", windows: [], error: "No API key" };
+	}
+
+	try {
+		const controller = new AbortController();
+		setTimeout(() => controller.abort(), 5000);
+
+		const res = await fetch("https://api.z.ai/api/monitor/usage/quota/limit", {
+			method: "GET",
+			headers: {
+				Authorization: `Bearer ${apiKey}`,
+				Accept: "application/json",
+			},
+			signal: controller.signal,
+		});
+
+		if (!res.ok) {
+			return { provider: "zai", displayName: "z.ai", windows: [], error: `HTTP ${res.status}` };
+		}
+
+		const data = await res.json() as any;
+		if (!data.success || data.code !== 200) {
+			return { provider: "zai", displayName: "z.ai", windows: [], error: data.msg || "API error" };
+		}
+
+		const windows: RateWindow[] = [];
+		const limits = data.data?.limits || [];
+
+		for (const limit of limits) {
+			const type = limit.type;
+			const usage = limit.usage || 0;
+			const remaining = limit.remaining || 0;
+			const percent = limit.percentage || 0;
+			const nextReset = limit.nextResetTime ? new Date(limit.nextResetTime) : undefined;
+
+			// Unit: 1=days, 3=hours, 5=minutes
+			let windowLabel = "Limit";
+			if (limit.unit === 1) windowLabel = `${limit.number}d`;
+			else if (limit.unit === 3) windowLabel = `${limit.number}h`;
+			else if (limit.unit === 5) windowLabel = `${limit.number}m`;
+
+			if (type === "TOKENS_LIMIT") {
+				windows.push({
+					label: `Tokens (${windowLabel})`,
+					usedPercent: percent,
+					resetDescription: nextReset ? formatReset(nextReset) : undefined,
+				});
+			} else if (type === "TIME_LIMIT") {
+				windows.push({
+					label: "Monthly",
+					usedPercent: percent,
+					resetDescription: nextReset ? formatReset(nextReset) : undefined,
+				});
+			}
+		}
+
+		const planName = data.data?.planName || data.data?.plan || undefined;
+		return { provider: "zai", displayName: "z.ai", windows, plan: planName };
+	} catch (e) {
+		return { provider: "zai", displayName: "z.ai", windows: [], error: String(e) };
+	}
+}
+
+// ============================================================================
 // Helpers
 // ============================================================================
 
@@ -530,11 +716,13 @@ class UsageComponent {
 			Promise.race([p, new Promise<T>((r) => setTimeout(() => r(fallback), ms))]);
 
 		// Fetch usage and status in parallel
-		const [claude, copilot, gemini, codex, claudeStatus, copilotStatus, geminiStatus, codexStatus] = await Promise.all([
+		const [claude, copilot, gemini, codex, kiro, zai, claudeStatus, copilotStatus, geminiStatus, codexStatus] = await Promise.all([
 			timeout(fetchClaudeUsage(), 6000, { provider: "anthropic", displayName: "Claude", windows: [], error: "Timeout" }),
 			timeout(fetchCopilotUsage(), 6000, { provider: "copilot", displayName: "Copilot", windows: [], error: "Timeout" }),
 			timeout(fetchGeminiUsage(this.modelRegistry), 6000, { provider: "gemini", displayName: "Gemini", windows: [], error: "Timeout" }),
 			timeout(fetchCodexUsage(this.modelRegistry), 6000, { provider: "codex", displayName: "Codex", windows: [], error: "Timeout" }),
+			timeout(fetchKiroUsage(), 6000, { provider: "kiro", displayName: "Kiro", windows: [], error: "Timeout" }),
+			timeout(fetchZaiUsage(), 6000, { provider: "zai", displayName: "z.ai", windows: [], error: "Timeout" }),
 			timeout(fetchProviderStatus("anthropic"), 3000, { indicator: "unknown" as const }),
 			timeout(fetchProviderStatus("copilot"), 3000, { indicator: "unknown" as const }),
 			timeout(fetchGeminiStatus(), 3000, { indicator: "unknown" as const }),
@@ -547,7 +735,9 @@ class UsageComponent {
 		gemini.status = geminiStatus;
 		codex.status = codexStatus;
 
-		this.usages = [claude, copilot, gemini, codex];
+		// Filter out providers with no data and no error (not configured)
+		const allUsages = [claude, copilot, gemini, codex, kiro, zai];
+		this.usages = allUsages.filter(u => u.windows.length > 0 || u.error !== "No credentials" && u.error !== "kiro-cli not found" && u.error !== "No API key");
 		this.loading = false;
 		this.tui.requestRender();
 	}
