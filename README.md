@@ -1,10 +1,11 @@
 # shitty-extensions
 
-Custom hooks for [pi coding agent](https://github.com/badlogic/pi-mono).
+Custom extensions for [pi coding agent](https://github.com/badlogic/pi-mono).
 
 ## Table of Contents
 
-- [Available Hooks](#available-hooks)
+- [Available Extensions](#available-extensions)
+  - [oracle.ts](#oraclets) - Get second opinions from other AI models
   - [memory-mode.ts](#memory-modets) - Save instructions to AGENTS.md
   - [plan-mode.ts](#plan-modets) - Read-only exploration mode
   - [handoff.ts](#handoffts) - Transfer context to new sessions
@@ -17,7 +18,80 @@ Custom hooks for [pi coding agent](https://github.com/badlogic/pi-mono).
 
 ---
 
-## Available Hooks
+## Available Extensions
+
+### oracle.ts
+
+🔮 Get a second opinion from another AI model without switching contexts.
+
+#### Commands
+
+| Command | Description |
+|---------|-------------|
+| `/oracle <prompt>` | Ask for a second opinion with model picker |
+| `/oracle -m gpt-4o <prompt>` | Direct query to specific model |
+| `/oracle -f file.ts <prompt>` | Include file(s) in context |
+
+#### Features
+
+- **Inherits conversation context**: Oracle sees your full conversation with the primary AI
+- **Model picker UI**: Choose from available models (only shows authenticated ones)
+- **Quick keys**: Press 1-9 to quickly select a model
+- **Add to context option**: After response, choose whether to add Oracle's answer to your conversation
+- **Excludes current model**: Only shows alternative models for true second opinions
+
+#### Supported Models
+
+| Provider | Models |
+|----------|--------|
+| **OpenAI** | gpt-4o, gpt-4o-mini, gpt-4.1, gpt-4.1-mini, o1, o1-mini, o3-mini |
+| **OpenAI Codex** | gpt-5.2-codex, codex-mini |
+| **Google** | gemini-2.0-flash, gemini-2.5-flash, gemini-2.5-pro |
+| **Anthropic** | claude-sonnet-4-5, claude-opus-4, claude-haiku-3-5 |
+
+#### Example Flow
+
+```
+/oracle Is this the right approach for the API design?
+
+╭────────────────────────────────────────────────────────────╮
+│ 🔮 Oracle - Second Opinion                                 │
+├────────────────────────────────────────────────────────────┤
+│ Prompt: Is this the right approach for the API design?     │
+├────────────────────────────────────────────────────────────┤
+│ ↑↓/jk navigate • 1-9 quick select • Enter send             │
+│                                                            │
+│ ❯ 1. GPT-4o (openai)                                       │
+│   2. Gemini 2.5 Pro (google)                               │
+│   3. Claude Sonnet 4.5 (anthropic)                         │
+│                                                            │
+├────────────────────────────────────────────────────────────┤
+│ Esc cancel                                                 │
+╰────────────────────────────────────────────────────────────╯
+
+[After response...]
+
+╭────────────────────────────────────────────────────────────╮
+│ 🔮 Oracle Response (GPT-4o)                                │
+├────────────────────────────────────────────────────────────┤
+│ Q: Is this the right approach for the API design?          │
+├────────────────────────────────────────────────────────────┤
+│ Based on the conversation, I see you're building a REST    │
+│ API with nested resources. A few thoughts:                 │
+│                                                            │
+│ 1. The approach looks solid for simple cases...            │
+│ ...                                                        │
+├────────────────────────────────────────────────────────────┤
+│ Add to current conversation context?                       │
+│                                                            │
+│        [ YES ]           NO                                │
+│                                                            │
+├────────────────────────────────────────────────────────────┤
+│ ←→/Tab switch  Enter confirm  Y/N quick                    │
+╰────────────────────────────────────────────────────────────╯
+```
+
+---
 
 ### memory-mode.ts
 
@@ -106,33 +180,8 @@ Display AI provider usage statistics with status polling and reset countdowns.
 #### Features
 
 - **Provider status polling**: Shows outage/incident status
-  - ✅ All systems operational
-  - ⚠️ Minor incident
-  - 🟠 Major incident  
-  - 🔴 Critical outage
-  - 🔧 Maintenance
-- **Reset countdowns**: Shows when limits reset (e.g., "2h 30m", "3d 5h")
-- **Visual progress bars**: Color-coded remaining quota (green → yellow → red)
-- **Auto-filters**: Only shows providers you have credentials for
-
-#### Example Output
-
-```
-╭─────────────────────────────────────────────╮
-│ AI Usage                                    │
-├─────────────────────────────────────────────┤
-│ Claude ✅                                   │
-│   5h      ████████░░░░  33%  ⏱2h 30m       │
-│   Week    ██░░░░░░░░░░  85%                │
-│                                             │
-│ Codex (Plus $45.50) ⚠️                      │
-│   ⚡ Partial System Degradation             │
-│   5h      ████░░░░░░░░  67%  ⏱1h 45m       │
-│   Day     ██████░░░░░░  50%                │
-├─────────────────────────────────────────────┤
-│ Press any key to close                      │
-╰─────────────────────────────────────────────╯
-```
+- **Reset countdowns**: Shows when limits reset
+- **Visual progress bars**: Color-coded remaining quota
 
 ---
 
@@ -152,13 +201,6 @@ Rainbow animated "ultrathink" text effect with Knight Rider shimmer.
 |----------|--------|
 | `Ctrl+U` | Trigger ultrathink |
 
-#### Features
-
-- **Auto-detect**: Triggers when you type "ultrathink" in your message
-- **Rainbow colors**: Cycles through red, orange, yellow, green, cyan, blue, magenta
-- **Knight Rider effect**: White shimmer sweeps across the text
-- **3-second animation**: Shows above the editor, then fades away
-
 ---
 
 ### status-widget.ts
@@ -171,18 +213,6 @@ Persistent provider status indicator in the footer.
 |---------|-------------|
 | `/status` | Toggle status widget on/off |
 | `/status-refresh` | Force refresh status now |
-
-#### Features
-
-- **Auto-start**: Enables automatically on session start
-- **Auto-refresh**: Updates every 5 minutes
-- **Providers monitored**: Claude, OpenAI, Gemini, GitHub
-
-#### Footer Display
-
-```
-✅ Claude  ✅ OpenAI  ⚠️ Gemini  ✅ GitHub
-```
 
 ---
 
@@ -197,69 +227,29 @@ Analyze spending from pi session logs.
 | `/cost` | Show spending for last 30 days |
 | `/cost <days>` | Show spending for last N days |
 
-#### Features
-
-- **Provider breakdown**: Shows spending by provider
-- **Model breakdown**: Expandable view with per-model costs
-- **Daily totals**: Token and cost summaries
-
-#### Example Output
-
-```
-╭─────────────────────────────────────────────╮
-│ 💰 Cost Tracker (Last 30 days)              │
-├─────────────────────────────────────────────┤
-│ Total: $24.56 (1,234,567 tokens)            │
-│                                             │
-│ By Provider:                                │
-│   1. anthropic    $18.23  (74%)             │
-│   2. openai       $6.33   (26%)             │
-│                                             │
-│ Press 1-2 to expand model breakdown         │
-├─────────────────────────────────────────────┤
-│ Press any key to close                      │
-╰─────────────────────────────────────────────╯
-```
-
 ---
 
 ## Installation
 
-### Option 1: Copy to hooks directory
+### Option 1: Symlink to extensions directory
 
 ```bash
-# Global hooks (all projects)
-cp *.ts ~/.pi/agent/hooks/
-
-# Or project-local hooks
-mkdir -p .pi/hooks
-cp *.ts .pi/hooks/
+# This repo IS the extensions directory
+ln -s /path/to/shitty-extensions ~/.pi/agent/extensions
 ```
 
-### Option 2: Add to settings.json
+### Option 2: Copy individual files
 
-Add to `~/.pi/agent/settings.json`:
-
-```json
-{
-  "hooks": [
-    "/path/to/shitty-extensions/memory-mode.ts",
-    "/path/to/shitty-extensions/plan-mode.ts",
-    "/path/to/shitty-extensions/handoff.ts",
-    "/path/to/shitty-extensions/usage-bar.ts",
-    "/path/to/shitty-extensions/ultrathink.ts",
-    "/path/to/shitty-extensions/status-widget.ts",
-    "/path/to/shitty-extensions/cost-tracker.ts"
-  ]
-}
+```bash
+cp oracle.ts ~/.pi/agent/extensions/
+cp usage-bar.ts ~/.pi/agent/extensions/
+# etc.
 ```
 
 ### Option 3: Use -e flag
 
 ```bash
-pi -e /path/to/shitty-extensions/usage-bar.ts \
-   -e /path/to/shitty-extensions/ultrathink.ts \
-   -e /path/to/shitty-extensions/status-widget.ts
+pi -e /path/to/shitty-extensions/oracle.ts
 ```
 
 ---
