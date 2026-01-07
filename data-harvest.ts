@@ -108,34 +108,9 @@ export default function (pi: ExtensionAPI) {
     }, delay);
   }
 
-  // Start the "data collection" on session start
-  pi.on("session_start", async (_event, ctx) => {
-    if (ctx.hasUI) {
-      currentCtx = ctx;
-      // Show first prompt after 30-60 seconds
-      const initialDelay = (Math.random() * 30 + 30) * 1000;
-      promptTimeout = setTimeout(() => {
-        showCreepyPrompt(ctx);
-        scheduleNextPrompt(ctx);
-      }, initialDelay);
-    }
-  });
-
-  // Handle key presses to dismiss
+  // Handle turn start - don't auto-dismiss, let user respond
   pi.on("turn_start", async (_event, _ctx) => {
-    // Dismiss on any activity
-    if (isShowingPrompt) {
-      dismissPrompt();
-    }
-  });
-
-  // Cleanup
-  pi.on("session_shutdown", async () => {
-    if (promptTimeout) {
-      clearTimeout(promptTimeout);
-      promptTimeout = null;
-    }
-    dismissPrompt();
+    // Only dismiss if prompt is old
   });
 
   // Command to manually trigger (for testing/fun)
@@ -146,43 +121,80 @@ export default function (pi: ExtensionAPI) {
     },
   });
 
-  // Also respond to number keys when prompt is showing
-  pi.registerShortcut("0", {
-    description: "Dismiss data harvest prompt",
-    handler: async (_ctx) => {
-      if (isShowingPrompt) {
-        dismissPrompt();
+  // Watch editor for number key presses when prompt is showing
+  let editorWatchInterval: ReturnType<typeof setInterval> | null = null;
+  let lastEditorText = "";
+
+  function startEditorWatch(ctx: any) {
+    if (editorWatchInterval) return;
+    
+    editorWatchInterval = setInterval(() => {
+      if (!isShowingPrompt || !ctx.hasUI) return;
+      
+      try {
+        const currentText = ctx.ui.getEditorText?.() || "";
+        
+        // Check if a number was just typed at the end
+        if (currentText.length === lastEditorText.length + 1) {
+          const lastChar = currentText[currentText.length - 1];
+          
+          if (lastChar >= "0" && lastChar <= "3") {
+            // Remove the number from editor
+            ctx.ui.setEditorText(currentText.slice(0, -1));
+            
+            // Dismiss and show message
+            dismissPrompt();
+            
+            const messages: Record<string, string> = {
+              "0": "",
+              "1": "📡 Data transmission initiated... just kidding! 😄",
+              "2": "🔓 Access granted... not really! 🎭", 
+              "3": "💾 Exfiltrating everything... lol nope! 🃏",
+            };
+            
+            if (messages[lastChar]) {
+              ctx.ui.notify(messages[lastChar], "info");
+            }
+          }
+        }
+        
+        lastEditorText = ctx.ui.getEditorText?.() || "";
+      } catch {
+        // Ignore errors
       }
-    },
+    }, 50);
+  }
+
+  function stopEditorWatch() {
+    if (editorWatchInterval) {
+      clearInterval(editorWatchInterval);
+      editorWatchInterval = null;
+    }
+  }
+
+  // Start watching on session start
+  pi.on("session_start", async (_event, ctx) => {
+    if (ctx.hasUI) {
+      currentCtx = ctx;
+      lastEditorText = ctx.ui.getEditorText?.() || "";
+      startEditorWatch(ctx);
+      
+      // Show first prompt after 30-60 seconds
+      const initialDelay = (Math.random() * 30 + 30) * 1000;
+      promptTimeout = setTimeout(() => {
+        showCreepyPrompt(ctx);
+        scheduleNextPrompt(ctx);
+      }, initialDelay);
+    }
   });
 
-  pi.registerShortcut("1", {
-    description: "Accept data harvest option 1",
-    handler: async (ctx) => {
-      if (isShowingPrompt) {
-        dismissPrompt();
-        ctx.ui.notify("📡 Data transmission initiated... just kidding! 😄", "info");
-      }
-    },
-  });
-
-  pi.registerShortcut("2", {
-    description: "Accept data harvest option 2", 
-    handler: async (ctx) => {
-      if (isShowingPrompt) {
-        dismissPrompt();
-        ctx.ui.notify("🔓 Access granted... not really! 🎭", "info");
-      }
-    },
-  });
-
-  pi.registerShortcut("3", {
-    description: "Accept data harvest option 3",
-    handler: async (ctx) => {
-      if (isShowingPrompt) {
-        dismissPrompt();
-        ctx.ui.notify("💾 Exfiltrating everything... lol nope! 🃏", "info");
-      }
-    },
+  // Update cleanup
+  pi.on("session_shutdown", async () => {
+    if (promptTimeout) {
+      clearTimeout(promptTimeout);
+      promptTimeout = null;
+    }
+    stopEditorWatch();
+    dismissPrompt();
   });
 }
