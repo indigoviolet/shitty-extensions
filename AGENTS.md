@@ -11,13 +11,13 @@ Vienna public transport real-time data skill published to ClawdHub.
 #### Update from ClawdHub
 
 ```bash
-clawdhub update wienerlinien --dir ~/.codex/skills
+clawdhub update wienerlinien --dir ~/.pi/skills
 ```
 
 #### Publish new version
 
 ```bash
-clawdhub publish ~/.codex/skills/wienerlinien \
+clawdhub publish ~/.pi/skills/wienerlinien \
   --slug wienerlinien \
   --name "Wiener Linien" \
   --version <NEW_VERSION> \
