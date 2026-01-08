@@ -431,7 +431,7 @@ export default function (pi: ExtensionAPI) {
 			}
 
 			// Show model picker
-			const selectedModel = await ctx.ui.custom<AvailableModel | null>((tui, _theme, done) => {
+			const selectedModel = await ctx.ui.custom<AvailableModel | null>((tui, _theme, _kb, done) => {
 				const picker = new ModelPickerComponent(
 					availableModels,
 					prompt,
@@ -515,7 +515,7 @@ async function executeOracle(
 	}
 
 	// Call the model
-	const result = await ctx.ui.custom<string | null>((tui, theme, done) => {
+	const result = await ctx.ui.custom<string | null>((tui, theme, _kb, done) => {
 		const loader = new BorderedLoader(tui, theme, `🔮 Asking ${model.name}...`);
 		loader.onAbort = () => done(null);
 
@@ -569,7 +569,7 @@ Focus on being helpful and providing a fresh perspective.`,
 	}
 
 	// Show result and ask if user wants to add to context
-	const addToContext = await ctx.ui.custom<boolean>((tui, _theme, done) => {
+	const addToContext = await ctx.ui.custom<boolean>((tui, _theme, _kb, done) => {
 		const component = new OracleResultComponent(
 			result,
 			model.name,

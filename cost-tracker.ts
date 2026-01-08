@@ -295,7 +295,7 @@ export default function (pi: ExtensionAPI) {
 
 			const daysBack = parseInt(args || "30") || 30;
 			
-			await ctx.ui.custom((tui, theme, done) => {
+			await ctx.ui.custom((tui, theme, _kb, done) => {
 				return new CostComponent(tui, theme, () => done(undefined), daysBack);
 			});
 		},

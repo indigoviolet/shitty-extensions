@@ -305,7 +305,7 @@ async function handleMemoryInstruction(pi: ExtensionAPI, ctx: ExtensionContext, 
 	}
 
 	// Step 3 & 4: AI Processing with spinner, then Preview with YES/NO
-	const result = await ctx.ui.custom<{ save: boolean; content: string } | null>((tui, theme, done) => {
+	const result = await ctx.ui.custom<{ save: boolean; content: string } | null>((tui, theme, _kb, done) => {
 		const component = new MemoryPreviewComponent(tui, theme, location.filePath);
 		component.onDone = done;
 
