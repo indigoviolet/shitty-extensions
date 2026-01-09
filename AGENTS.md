@@ -2,50 +2,25 @@
 
 ## Skills
 
-### Wiener Linien
+### A nach B
 
-Vienna public transport real-time data skill published to ClawdHub.
+Universal journey planning skill for transit and routing.
 
-**Slug:** `wienerlinien`
+**Slug:** `a-nach-b`
 
 #### Update from ClawdHub
 
 ```bash
-clawdhub update wienerlinien --dir ~/.pi/skills
+clawdhub update a-nach-b --dir ~/.pi/skills
 ```
 
 #### Publish new version
 
 ```bash
-clawdhub publish ~/.pi/skills/wienerlinien \
-  --slug wienerlinien \
-  --name "Wiener Linien" \
+clawdhub publish ~/.pi/skills/a-nach-b \
+  --slug a-nach-b \
+  --name "A nach B" \
   --version <NEW_VERSION> \
   --changelog "<DESCRIPTION OF CHANGES>" \
-  --tags "latest,vienna,transit,austria"
-```
-
----
-
-### ÖBB Scotty
-
-Austrian rail travel planner skill (from [mitsuhiko/agent-stuff](https://github.com/mitsuhiko/agent-stuff)).
-
-**Slug:** `oebb-scotty`
-
-#### Update from ClawdHub
-
-```bash
-clawdhub update oebb-scotty --dir ~/.pi/skills
-```
-
-#### Publish new version
-
-```bash
-clawdhub publish ~/.pi/skills/oebb-scotty \
-  --slug oebb-scotty \
-  --name "ÖBB Scotty" \
-  --version <NEW_VERSION> \
-  --changelog "<DESCRIPTION OF CHANGES>" \
-  --tags "latest,austria,transit,trains,oebb"
+  --tags "latest,routing,transit,planning"
 ```
