@@ -132,7 +132,10 @@ export default function (pi: ExtensionAPI) {
 				return;
 			}
 
-			ctx.ui.setWorkingMessage(pickWord());
+			// If we toggle while the agent is already streaming, apply immediately.
+			if (!ctx.isIdle()) {
+				ctx.ui.setWorkingMessage(pickWord());
+			}
 			ctx.ui.notify("Funny working message enabled", "info");
 		},
 	});
