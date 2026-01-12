@@ -13,6 +13,7 @@ Custom extensions and skills for [pi coding agent](https://github.com/badlogic/p
   - [ultrathink.ts](#ultrathinkts) - Rainbow animated "ultrathink" effect
   - [status-widget.ts](#status-widgetts) - Provider status in footer
   - [cost-tracker.ts](#cost-trackerts) - Session spending analysis
+  - [funny-working-message.ts](#funny-working-messagets) - Randomized spinner "Working..." text
 - [Available Skills](#available-skills)
   - [wienerlinien](#wienerlinien) - Vienna public transport real-time data
   - [oebb-scotty](#oebb-scotty) - Austrian rail travel planner (ÖBB)
